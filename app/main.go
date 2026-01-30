@@ -16,6 +16,7 @@ func main() {
 	echo := "echo"
 	builtin := "type"
 	pwd := "pwd"
+	cd := "cd"
 
 	for {
 		fmt.Print("$ ")
@@ -71,12 +72,19 @@ func main() {
 			//Logic for 'pwd'
 			command, err := os.Getwd()
 			if err != nil {
-				fmt.Println("Error running command: %v\n", err)
+				fmt.Printf("Error running command: %v\n", err)
 			} else {
 				fmt.Println(command)
 			}
 		
-		}	else {
+		} else if cmd == cd {
+			//Logic for 'cd'
+			path := strings.Join(args, " ")
+			if os.Chdir(path) != nil{
+				fmt.Println("cd: " + path + ": No such file or directory")
+			}
+
+		} else {
 			//Logic for external executables
 			_, err := exec.LookPath(cmd)
 			if err != nil {
