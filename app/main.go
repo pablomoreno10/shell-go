@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"bufio"
+	"fmt"
 	"os"
-	"strings"
 	"os/exec"
+	"strings"
 )
 
 var _ = fmt.Print
@@ -16,53 +16,71 @@ func main() {
 	echo := "echo"
 	builtin := "type"
 
-	for{
+	for {
 		fmt.Print("$ ")
 
 		//read user input
-		command, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
 
 		//invalid input
-		if err != nil{
-			fmt.Fprintln(os.Stderr, "Error reading input: " ,err)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
 			os.Exit(1)
 		}
 
-		//commands
-		if  strings.Fields(strings.TrimSpace(command))[0] == builtin{
-			slice := strings.Fields(strings.TrimSpace(command))[1:]
-			arg := strings.Join(slice, " ")
-			if (arg == exit) || (arg == builtin) || (arg == echo){
-				fmt.Println(arg + " is a shell builtin")
-			}else{
-				slice := strings.Fields(strings.TrimSpace(command))[1:]
-				arg := strings.Join(slice, " ")
-				path, err := exec.LookPath(arg)
+		//Clean and Tokenize ONCE
+		cleanInput := strings.TrimSpace(input)
+		parts := strings.Fields(cleanInput)
+
+		// Handle empty input (user just hit Enter)
+		if len(parts) == 0 {
+			continue
+		}
+
+		//Separate Command from Arguments
+		cmd := parts[0]
+		args := parts[1:]
+
+		//Commands
+		if cmd == builtin {
+			//Logic for 'type'
+			target := strings.Join(args, " ")
+
+			if target == exit || target == builtin || target == echo {
+				fmt.Println(target + " is a shell builtin")
+			} else {
+				path, err := exec.LookPath(target)
 				if err != nil {
-					fmt.Println(strings.TrimSpace(arg)+ ": not found")
-				}else{
-					fmt.Println(arg + " is " +  path)
+					fmt.Println(target + ": not found")
+				} else {
+					fmt.Println(target + " is " + path)
 				}
 			}
-		}else if strings.Fields(strings.TrimSpace(command))[0] == echo{
-			slice := strings.Fields(strings.TrimSpace(command))[1:]
-			arg := strings.Join(slice, " ")
-			fmt.Println(arg)
-		}else if strings.TrimSpace(command) == exit{
+
+		} else if cmd == echo {
+			//Logic for 'echo'
+			output := strings.Join(args, " ")
+			fmt.Println(output)
+
+		} else if cmd == exit {
+			//Logic for 'exit'
 			os.Exit(0)
-		}else{
-			executable := strings.Fields(strings.TrimSpace(command))[0]
-			slice := strings.Fields(strings.TrimSpace(command))[1:]
-			_ , err := exec.LookPath(executable)
+
+		} else {
+			//Logic for external executables
+			_, err := exec.LookPath(cmd)
 			if err != nil {
-				fmt.Println(strings.TrimSpace(command) + ": command not found")
-			}else{
-				cmd := exec.Command(executable, slice...)	//ellipsis to pass all arguments of the slice into the variadic parameter
-				output, err := cmd.CombinedOutput()
+				fmt.Println(cmd + ": command not found")
+			} else {
+				//We use the 'cmd' variable and the 'args' slice we created at the top
+				command := exec.Command(cmd, args...) //'...' unpacks the args slice
+				
+				//Standard Output + Standard Error combined
+				output, err := command.CombinedOutput()
 				if err != nil {
 					fmt.Printf("Error running command: %v\n", err)
-				}else{
-					fmt.Printf(string(output))
+				} else {
+					fmt.Print(string(output))
 				}
 			}
 		}
