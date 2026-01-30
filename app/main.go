@@ -28,30 +28,43 @@ func main() {
 			os.Exit(1)
 		}
 
-		//type builtin
+		//commands
 		if  strings.Fields(strings.TrimSpace(command))[0] == builtin{
 			slice := strings.Fields(strings.TrimSpace(command))[1:]
-			output := strings.Join(slice, " ")
-			if (output == exit) || (output == builtin) || (output == echo){
-				fmt.Println(output + " is a shell builtin")
+			arg := strings.Join(slice, " ")
+			if (arg == exit) || (arg == builtin) || (arg == echo){
+				fmt.Println(arg + " is a shell builtin")
 			}else{
 				slice := strings.Fields(strings.TrimSpace(command))[1:]
-				output := strings.Join(slice, " ")
-				path, err := exec.LookPath(output)
+				arg := strings.Join(slice, " ")
+				path, err := exec.LookPath(arg)
 				if err != nil {
-					fmt.Println(strings.TrimSpace(output)+ ": not found")
+					fmt.Println(strings.TrimSpace(arg)+ ": not found")
 				}else{
-					fmt.Println(output + " is " +  path)
+					fmt.Println(arg + " is " +  path)
 				}
 			}
 		}else if strings.Fields(strings.TrimSpace(command))[0] == echo{
 			slice := strings.Fields(strings.TrimSpace(command))[1:]
-			output := strings.Join(slice, " ")
-			fmt.Println(output)
+			arg := strings.Join(slice, " ")
+			fmt.Println(arg)
 		}else if strings.TrimSpace(command) == exit{
 			os.Exit(0)
 		}else{
-			fmt.Println(strings.TrimSpace(command) + ": command not found")
+			executable := strings.Fields(strings.TrimSpace(command))[0]
+			slice := strings.Fields(strings.TrimSpace(command))[1:]
+			_ , err := exec.LookPath(executable)
+			if err != nil {
+				fmt.Println(strings.TrimSpace(command) + ": command not found")
+			}else{
+				cmd := exec.Command(executable, slice...)	//ellipsis to pass all arguments of the slice into the variadic parameter
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					fmt.Printf("Error running command: %v\n", err)
+				}else{
+					fmt.Printf(string(output))
+				}
+			}
 		}
 	}
 }
