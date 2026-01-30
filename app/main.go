@@ -80,10 +80,20 @@ func main() {
 		} else if cmd == cd {
 			//Logic for 'cd'
 			path := strings.Join(args, " ")
-			if os.Chdir(path) != nil{
-				fmt.Println("cd: " + path + ": No such file or directory")
+			if path == "~"{
+				home, err := os.UserHomeDir()
+				if err != nil{
+					fmt.Printf("Error reaching home directory: %v\n", err)
+				}
+				if os.Chdir(home) != nil{
+					fmt.Println("Error reaching home directory")
+				}
+			}else{
+				if os.Chdir(path) != nil{
+					fmt.Println("cd: " + path + ": No such file or directory")
+				}
 			}
-
+			
 		} else {
 			//Logic for external executables
 			_, err := exec.LookPath(cmd)
