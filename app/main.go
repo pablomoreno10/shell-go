@@ -15,6 +15,7 @@ func main() {
 	exit := "exit"
 	echo := "echo"
 	builtin := "type"
+	pwd := "pwd"
 
 	for {
 		fmt.Print("$ ")
@@ -46,7 +47,7 @@ func main() {
 			//Logic for 'type'
 			target := strings.Join(args, " ")
 
-			if target == exit || target == builtin || target == echo {
+			if target == exit || target == builtin || target == echo || target == pwd {
 				fmt.Println(target + " is a shell builtin")
 			} else {
 				path, err := exec.LookPath(target)
@@ -66,7 +67,16 @@ func main() {
 			//Logic for 'exit'
 			os.Exit(0)
 
-		} else {
+		} else if cmd == pwd {
+			//Logic for 'pwd'
+			command, err := os.Getwd()
+			if err != nil {
+				fmt.Println("Error running command: %v\n", err)
+			} else {
+				fmt.Println(command)
+			}
+		
+		}	else {
 			//Logic for external executables
 			_, err := exec.LookPath(cmd)
 			if err != nil {
