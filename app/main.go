@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"os"
 	"strings"
+	"os/exec"
 )
 
 var _ = fmt.Print
@@ -36,7 +37,12 @@ func main() {
 			}else{
 				slice := strings.Fields(strings.TrimSpace(command))[1:]
 				output := strings.Join(slice, " ")
-				fmt.Println(strings.TrimSpace(output)+ ": not found")
+				path, err := exec.LookPath(output)
+				if err != nil {
+					fmt.Println(strings.TrimSpace(output)+ ": not found")
+				}else{
+					fmt.Println(output + " is " +  path)
+				}
 			}
 		}else if strings.Fields(strings.TrimSpace(command))[0] == echo{
 			slice := strings.Fields(strings.TrimSpace(command))[1:]
