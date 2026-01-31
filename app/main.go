@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"github.com/google/shlex"
 )
 
 var _ = fmt.Print
@@ -17,6 +18,7 @@ func main() {
 	builtin := "type"
 	pwd := "pwd"
 	cd := "cd"
+	quit := "q"
 
 	for {
 		fmt.Print("$ ")
@@ -32,16 +34,16 @@ func main() {
 
 		//Clean and Tokenize ONCE
 		cleanInput := strings.TrimSpace(input)
-		parts := strings.Fields(cleanInput)
 
 		// Handle empty input (user just hit Enter)
-		if len(parts) == 0 {
+		if cleanInput == "" {
 			continue
 		}
 
 		//Separate Command from Arguments
-		cmd := parts[0]
-		args := parts[1:]
+		content, _ := shlex.Split(cleanInput)
+		cmd := content[0]
+		args := content[1:]
 
 		//Commands
 		if cmd == builtin {
@@ -61,10 +63,10 @@ func main() {
 
 		} else if cmd == echo {
 			//Logic for 'echo'
-			output := strings.Join(args, " ")
-			fmt.Println(output)
-
-		} else if cmd == exit {
+			content:= strings.Join(args, " ")
+			fmt.Println(content)
+			
+		} else if cmd == exit || cmd == quit{
 			//Logic for 'exit'
 			os.Exit(0)
 
