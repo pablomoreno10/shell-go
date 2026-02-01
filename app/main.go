@@ -6,10 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"github.com/google/shlex"
 )
-
-var _ = fmt.Print
 
 func main() {
 
@@ -28,22 +25,25 @@ func main() {
 
 		//invalid input
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
+			fmt.Fprintln(os.Stderr, "Error reading inputß: ", err)
 			os.Exit(1)
 		}
 
-		//Clean and Tokenize ONCE
+		//Clean saces at the beginning and end ex. echo hello world
 		cleanInput := strings.TrimSpace(input)
+		parts, err := parseInput(cleanInput)
 
-		// Handle empty input (user just hit Enter)
-		if cleanInput == "" {
+		if err != nil {
+			fmt.Println("Error parsing input:", err)
+			continue
+		}
+		if len(parts) == 0 {
 			continue
 		}
 
 		//Separate Command from Arguments
-		content, _ := shlex.Split(cleanInput)
-		cmd := content[0]
-		args := content[1:]
+		cmd := parts[0]
+		args := parts[1:]
 
 		//Commands
 		if cmd == builtin {
@@ -115,4 +115,89 @@ func main() {
 			}
 		}
 	}
+}
+
+
+func parseInput(input string)([]string,error){
+	var args []string
+	var currentArg strings.Builder 
+	inSingleQuote := false
+	inDoubleQuote := false
+	escape := false
+
+	for _, r := range input{
+		if escape {
+			if inDoubleQuote{
+				switch r{
+					case '$', '`', '"', '\\', '\n':
+                    //If one of these specials, we kill the backslash and just write the character
+                    currentArg.WriteRune(r)
+                default:
+                    //We write the backslash again and the character if the character that follows the backlash is not special
+                    currentArg.WriteRune('\\') 
+                    currentArg.WriteRune(r)
+				}
+			}else{
+				//outside double quotes, a backslash ALWAYS escapes the next character
+                currentArg.WriteRune(r)
+			}
+
+			escape = false
+			continue
+		}
+
+		//if there is a backslash
+		if r == '\\'{ //in other words we are just checking for a single \
+			if inSingleQuote{
+				currentArg.WriteRune(r)
+			}else{
+				escape = true
+			}
+			continue
+		}
+		
+		//if there is a single quote
+		if r == '\''{ //in other words we are just checking for ' 
+			if inDoubleQuote{
+				currentArg.WriteRune(r)
+			}else{
+				inSingleQuote = !inSingleQuote
+			}
+			continue
+		}
+
+		if r == '"'{
+			if inSingleQuote{
+				currentArg.WriteRune(r)
+			}else{
+				inDoubleQuote = !inDoubleQuote
+			}
+			continue
+		}
+
+		if r == ' '{
+			if !inSingleQuote && !inDoubleQuote{
+				if currentArg.Len() > 0{
+					args = append(args, currentArg.String())
+					currentArg.Reset()
+				}
+				continue
+			}
+			//if we are in quotes then we do need the space
+			currentArg.WriteRune(r)
+			continue
+		}
+		currentArg.WriteRune(r)
+	}
+
+	if currentArg.Len() > 0{
+		args = append(args, currentArg.String())
+	}
+
+	if inDoubleQuote || inSingleQuote{
+		return nil, fmt.Errorf("unclosed quote")
+	}
+
+	return args, nil
+
 }
