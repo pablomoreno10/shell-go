@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"io"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 
 		//invalid input
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error reading inputß: ", err)
+			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
 			os.Exit(1)
 		}
 
@@ -45,6 +46,25 @@ func main() {
 		cmd := parts[0]
 		args := parts[1:]
 
+		//Check for redirection
+		cleanArgs, outputFile ,err := redirectStdout(args)
+		if err != nil{
+			fmt.Println("Error:", err)
+			continue
+		}
+
+		var outputDestination io.Writer = os.Stdout
+
+		if outputFile != nil {
+			outputDestination = outputFile
+			//to not forget to close the file later
+			defer outputFile.Close() 
+		}
+
+		if cleanArgs != nil{
+			args = cleanArgs
+		}
+
 		//Commands
 		if cmd == builtin {
 			//Logic for 'type'
@@ -55,16 +75,16 @@ func main() {
 			} else {
 				path, err := exec.LookPath(target)
 				if err != nil {
-					fmt.Println(target + ": not found")
+					fmt.Fprintln(outputDestination, target + ": not found")
 				} else {
-					fmt.Println(target + " is " + path)
+					fmt.Fprintln(outputDestination, target + " is " + path)
 				}
 			}
 
 		} else if cmd == echo {
 			//Logic for 'echo'
 			content:= strings.Join(args, " ")
-			fmt.Println(content)
+			fmt.Fprintln(outputDestination, content)
 			
 		} else if cmd == exit || cmd == quit{
 			//Logic for 'exit'
@@ -74,9 +94,9 @@ func main() {
 			//Logic for 'pwd'
 			command, err := os.Getwd()
 			if err != nil {
-				fmt.Printf("Error running command: %v\n", err)
+				fmt.Fprintf(outputDestination, "Error running command: %v\n", err)
 			} else {
-				fmt.Println(command)
+				fmt.Fprintln(outputDestination, command)
 			}
 		
 		} else if cmd == cd {
@@ -85,34 +105,35 @@ func main() {
 			if path == "~"{
 				home, err := os.UserHomeDir()
 				if err != nil{
-					fmt.Printf("Error reaching home directory: %v\n", err)
+					fmt.Fprintf(outputDestination, "Error reaching home directory: %v\n", err)
 				}
 				if os.Chdir(home) != nil{
-					fmt.Println("Error reaching home directory")
+					fmt.Fprintln(outputDestination, "Error reaching home directory")
 				}
 			}else{
 				if os.Chdir(path) != nil{
-					fmt.Println("cd: " + path + ": No such file or directory")
+					fmt.Fprintln(outputDestination, "cd: " + path + ": No such file or directory")
 				}
 			}
 			
 		} else {
 			//Logic for external executables
 			_, err := exec.LookPath(cmd)
+
 			if err != nil {
-				fmt.Println(cmd + ": command not found")
-			} else {
-				//We use the 'cmd' variable and the 'args' slice we created at the top
-				command := exec.Command(cmd, args...) //'...' unpacks the args slice
-				
-				//Standard Output + Standard Error combined
-				output, err := command.CombinedOutput()
-				if err != nil {
-					fmt.Printf("Error running command: %v\n", err)
-				} else {
-					fmt.Print(string(output))
-				}
+				fmt.Printf("%s: command not found\n", cmd)
+				continue
 			}
+
+			//We use the 'cmd' variable and the 'args' slice we created at the top
+			command := exec.Command(cmd, args...) //'...' unpacks the args slice
+			
+			//We need to separate stdout and stderr otherwise stderror is displayed in /dev/null if file does not exist
+			command.Stdout = outputDestination
+			command.Stderr = os.Stderr
+
+			command.Run()
+			
 		}
 	}
 }
@@ -200,4 +221,29 @@ func parseInput(input string)([]string,error){
 
 	return args, nil
 
+}
+
+//If there is a >, we redirect the stdout to the desired file
+func redirectStdout(args []string)([]string, *os.File, error){
+	for i, r := range args{
+		if r == ">" || r == "1>"{
+			
+			if i+1 >= len(args){
+				return nil, nil, fmt.Errorf("syntax error: expected filename after >")
+			}
+
+			filename := args[i+1]
+
+			
+			file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+
+			if err != nil {
+				return nil, nil, err
+			}
+			
+			
+			return args[:i], file, nil
+		}
+	}
+	return args, nil, nil
 }
