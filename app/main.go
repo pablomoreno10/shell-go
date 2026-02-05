@@ -47,7 +47,7 @@ func main() {
 		args := parts[1:]
 
 		//Check for redirection
-		cleanArgs, outputFile, errorFile, err := redirectStdout(args)
+		cleanArgs, outputFile, errorFile, err := parseRedirection(args)
 		if err != nil{
 			fmt.Println("Error:", err)
 			continue
@@ -231,9 +231,10 @@ func parseInput(input string)([]string,error){
 
 }
 
-//If there is a >, we redirect the stdout to the desired file
-func redirectStdout(args []string)([]string, *os.File, *os.File, error){
-	for i, r:= range args{
+//parseRedirection scans the command arguments for output redirection operators
+func parseRedirection(args []string)([]string, *os.File, *os.File, error){
+	for i, r := range args{
+		//Stdout redirection
 		if r == ">" || r == "1>"{
 			if i+1 >= len(args){
 				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after >")
@@ -245,7 +246,7 @@ func redirectStdout(args []string)([]string, *os.File, *os.File, error){
 			}
 			return args[:i], file, nil, nil
 		}
-		
+		//Stderr redirection
 		if r == "2>"{
 			if i+1 >= len(args){
 				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after 2>")
@@ -257,7 +258,7 @@ func redirectStdout(args []string)([]string, *os.File, *os.File, error){
 			}
 			return args[:i], nil, file, nil
 		}
-
+		//Stdout append
 		if r == ">>" || r == "1>>"{
 			if i+1 >= len(args){
 				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after >>")
@@ -268,6 +269,18 @@ func redirectStdout(args []string)([]string, *os.File, *os.File, error){
 				return nil, nil, nil, err
 			}
 			return args[:i], file, nil, nil
+		}
+		//Stderr append
+		if r == "2>>"{
+			if i+1 >= len(args){
+				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after 2>>")
+			}
+			filename := args[i+1]
+			file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			return args[:i], nil, file, nil
 		}
 	}
 	return args, nil, nil, nil
