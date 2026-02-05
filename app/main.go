@@ -47,19 +47,27 @@ func main() {
 		args := parts[1:]
 
 		//Check for redirection
-		cleanArgs, outputFile ,err := redirectStdout(args)
+		cleanArgs, outputFile, errorFile, err := redirectStdout(args)
 		if err != nil{
 			fmt.Println("Error:", err)
 			continue
 		}
 
-		var outputDestination io.Writer = os.Stdout
+		var stdoutDestination io.Writer = os.Stdout
+		var stderrDestination io.Writer = os.Stderr
 
 		if outputFile != nil {
-			outputDestination = outputFile
+			stdoutDestination = outputFile
 			//to not forget to close the file later
-			defer outputFile.Close() 
+			defer outputFile.Close()
 		}
+
+		if errorFile != nil{
+			stderrDestination = errorFile
+			defer errorFile.Close()
+		}
+
+		//redirectError := false
 
 		if cleanArgs != nil{
 			args = cleanArgs
@@ -75,16 +83,16 @@ func main() {
 			} else {
 				path, err := exec.LookPath(target)
 				if err != nil {
-					fmt.Fprintln(outputDestination, target + ": not found")
+					fmt.Fprintln(stdoutDestination, target + ": not found")
 				} else {
-					fmt.Fprintln(outputDestination, target + " is " + path)
+					fmt.Fprintln(stdoutDestination, target + " is " + path)
 				}
 			}
 
 		} else if cmd == echo {
 			//Logic for 'echo'
 			content:= strings.Join(args, " ")
-			fmt.Fprintln(outputDestination, content)
+			fmt.Fprintln(stdoutDestination, content)
 			
 		} else if cmd == exit || cmd == quit{
 			//Logic for 'exit'
@@ -94,9 +102,9 @@ func main() {
 			//Logic for 'pwd'
 			command, err := os.Getwd()
 			if err != nil {
-				fmt.Fprintf(outputDestination, "Error running command: %v\n", err)
+				fmt.Fprintf(stdoutDestination, "Error running command: %v\n", err)
 			} else {
-				fmt.Fprintln(outputDestination, command)
+				fmt.Fprintln(stdoutDestination, command)
 			}
 		
 		} else if cmd == cd {
@@ -105,14 +113,14 @@ func main() {
 			if path == "~"{
 				home, err := os.UserHomeDir()
 				if err != nil{
-					fmt.Fprintf(outputDestination, "Error reaching home directory: %v\n", err)
+					fmt.Fprintf(stdoutDestination, "Error reaching home directory: %v\n", err)
 				}
 				if os.Chdir(home) != nil{
-					fmt.Fprintln(outputDestination, "Error reaching home directory")
+					fmt.Fprintln(stdoutDestination, "Error reaching home directory")
 				}
 			}else{
 				if os.Chdir(path) != nil{
-					fmt.Fprintln(outputDestination, "cd: " + path + ": No such file or directory")
+					fmt.Fprintln(stdoutDestination, "cd: " + path + ": No such file or directory")
 				}
 			}
 			
@@ -129,8 +137,8 @@ func main() {
 			command := exec.Command(cmd, args...) //'...' unpacks the args slice
 			
 			//We need to separate stdout and stderr otherwise stderror is displayed in /dev/null if file does not exist
-			command.Stdout = outputDestination
-			command.Stderr = os.Stderr
+			command.Stdout = stdoutDestination
+			command.Stderr = stderrDestination
 
 			command.Run()
 			
@@ -224,26 +232,31 @@ func parseInput(input string)([]string,error){
 }
 
 //If there is a >, we redirect the stdout to the desired file
-func redirectStdout(args []string)([]string, *os.File, error){
-	for i, r := range args{
+func redirectStdout(args []string)([]string, *os.File, *os.File, error){
+	for i, r:= range args{
 		if r == ">" || r == "1>"{
-			
 			if i+1 >= len(args){
-				return nil, nil, fmt.Errorf("syntax error: expected filename after >")
+				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after >")
 			}
-
 			filename := args[i+1]
-
-			
 			file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			
-			
-			return args[:i], file, nil
+			return args[:i], file, nil, nil
+		}
+		
+		if r == "2>"{
+			if i+1 >= len(args){
+				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after >")
+			}
+			filename := args[i+1]
+			file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			return args[:i], nil, file, nil
 		}
 	}
-	return args, nil, nil
+	return args, nil, nil, nil
 }
