@@ -248,7 +248,7 @@ func redirectStdout(args []string)([]string, *os.File, *os.File, error){
 		
 		if r == "2>"{
 			if i+1 >= len(args){
-				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after >")
+				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after 2>")
 			}
 			filename := args[i+1]
 			file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
@@ -256,6 +256,18 @@ func redirectStdout(args []string)([]string, *os.File, *os.File, error){
 				return nil, nil, nil, err
 			}
 			return args[:i], nil, file, nil
+		}
+
+		if r == ">>" || r == "1>>"{
+			if i+1 >= len(args){
+				return nil, nil, nil, fmt.Errorf("syntax error: expected filename after >>")
+			}
+			filename := args[i+1]
+			file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			return args[:i], file, nil, nil
 		}
 	}
 	return args, nil, nil, nil
