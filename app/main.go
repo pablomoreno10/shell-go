@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"io"
+	"github.com/chzyer/readline"
+
 )
 
 func main() {
@@ -18,20 +19,32 @@ func main() {
 	cd := "cd"
 	quit := "q"
 
+	var completer = readline.NewPrefixCompleter(
+			readline.PcItem("exit"),
+			readline.PcItem("echo"),
+	)
+
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt: "$ ",
+		AutoComplete: completer,
+	})
+
+	if err != nil{
+		panic(err)
+	}
+
+	defer rl.Close()
+
 	for {
-		fmt.Print("$ ")
-
-		//read user input
-		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
-
+		line, err := rl.Readline()
+	
 		//invalid input
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
-			os.Exit(1)
+			break
 		}
 
-		//Clean saces at the beginning and end ex. echo hello world
-		cleanInput := strings.TrimSpace(input)
+		//Clean spaces at the beginning and end; ex. echo hello world
+		cleanInput := strings.TrimSpace(line)
 		parts, err := parseInput(cleanInput)
 
 		if err != nil {
@@ -285,3 +298,6 @@ func parseRedirection(args []string)([]string, *os.File, *os.File, error){
 	}
 	return args, nil, nil, nil
 }
+
+
+
