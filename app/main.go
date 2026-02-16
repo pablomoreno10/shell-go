@@ -10,6 +10,22 @@ import (
 
 )
 
+//wrap PrefixCompleter into a new struct to add custom logic
+type BellCompleter struct {
+		internal *readline.PrefixCompleter
+	}
+
+//this method is called everytime TAB is hit
+func (bc *BellCompleter) Do(line []rune, pos int) ([][]rune, int) {
+		suggestions, length := bc.internal.Do(line, pos)
+
+		if len(suggestions) == 0 {
+			fmt.Print("\a")
+		}
+
+		return suggestions, length
+}
+
 func main() {
 
 	exit := "exit"
@@ -19,10 +35,15 @@ func main() {
 	cd := "cd"
 	quit := "q"
 
-	var completer = readline.NewPrefixCompleter(
-			readline.PcItem("exit"),
-			readline.PcItem("echo"),
+	var worker = readline.NewPrefixCompleter(
+		readline.PcItem("echo"),
+		readline.PcItem("exit"),
 	)
+
+	//create the wrapper, we put the worker inside the new BellCompleter
+	var completer = &BellCompleter{
+		internal: worker,
+	}
 
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt: "$ ",
@@ -43,8 +64,14 @@ func main() {
 			break
 		}
 
+
 		//Clean spaces at the beginning and end; ex. echo hello world
 		cleanInput := strings.TrimSpace(line)
+		
+		if cleanInput == ""{
+			continue
+		}
+
 		parts, err := parseInput(cleanInput)
 
 		if err != nil {
