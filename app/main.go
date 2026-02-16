@@ -35,10 +35,20 @@ func main() {
 	cd := "cd"
 	quit := "q"
 
-	var worker = readline.NewPrefixCompleter(
-		readline.PcItem("echo"),
-		readline.PcItem("exit"),
-	)
+	
+	items := []readline.PrefixCompleterInterface{}
+
+	items = append(items, readline.PcItem("echo"))
+	items = append(items, readline.PcItem("exit"))
+
+	executables := getAllExec()
+
+	//add each executable into the slice
+	for _, exe := range executables {
+		items = append(items, readline.PcItem(exe))
+	}
+
+	var worker = readline.NewPrefixCompleter(items...)
 
 	//create the wrapper, we put the worker inside the new BellCompleter
 	var completer = &BellCompleter{
@@ -328,3 +338,34 @@ func parseRedirection(args []string)([]string, *os.File, *os.File, error){
 
 
 
+func getAllExec() []string {
+    path := os.Getenv("PATH")
+    dirs := strings.Split(path, ":")
+    exec := []string{}
+
+    for _, dir := range dirs {
+        if dir == "" {
+            continue
+        }
+        
+        files, err := os.ReadDir(dir)
+        if err != nil {
+            continue  //skip directories we can't read
+        }
+        
+        for _, file := range files {
+            // Get file info to check permissions
+            info, err := file.Info()
+            if err != nil {
+                continue
+            }
+            
+            // Check if it's a regular file AND executable
+            if info.Mode().IsRegular() && info.Mode().Perm() & 0111 != 0 {
+                exec = append(exec, file.Name())
+            }
+        }
+    }
+
+    return exec
+}
