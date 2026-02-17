@@ -7,23 +7,48 @@ import (
 	"strings"
 	"io"
 	"github.com/chzyer/readline"
+	"slices"
 
 )
 
 //wrap PrefixCompleter into a new struct to add custom logic
 type BellCompleter struct {
 		internal *readline.PrefixCompleter
+		prevLine []rune
 	}
 
 //this method is called everytime TAB is hit
 func (bc *BellCompleter) Do(line []rune, pos int) ([][]rune, int) {
 		suggestions, length := bc.internal.Do(line, pos)
 
+		sameContext := string(line) == string(bc.prevLine) //check if tab was hit previously
 		if len(suggestions) == 0 {
-			fmt.Print("\a")
+			fmt.Print("\a") 
+			bc.prevLine = line
+			return suggestions, length
 		}
 
-		return suggestions, length
+
+		if len(suggestions) == 1 {
+			bc.prevLine = line
+			return suggestions, length
+		}
+
+		if len(suggestions) > 1 {
+			if !sameContext{
+				bc.prevLine = line
+				fmt.Print("\a")
+			}else{
+				fmt.Println()
+				for _, r := range suggestions{
+					fmt.Print(string(line) + string(r) + " ")
+				}
+				fmt.Printf("\n$ %s", string(line))
+				return suggestions, length
+			}
+			
+		}
+	return nil, length
 }
 
 func main() {
@@ -366,6 +391,6 @@ func getAllExec() []string {
             }
         }
     }
-
+	slices.Sort(exec)
     return exec
 }
