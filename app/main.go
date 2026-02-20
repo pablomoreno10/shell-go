@@ -18,8 +18,8 @@ type BellCompleter struct {
 	}
 
 //this method is called everytime TAB is hit
-func (bc *BellCompleter) Do(line []rune, pos int) ([][]rune, int) {
-		suggestions, length := bc.internal.Do(line, pos)
+func (bc *BellCompleter) Do(line []rune, pos int) ([][]rune, int){
+	suggestions, length := bc.internal.Do(line, pos)
 
 		sameContext := string(line) == string(bc.prevLine) //check if tab was hit previously
 		if len(suggestions) == 0 {
@@ -28,7 +28,6 @@ func (bc *BellCompleter) Do(line []rune, pos int) ([][]rune, int) {
 			return suggestions, length
 		}
 
-
 		if len(suggestions) == 1 {
 			bc.prevLine = line
 			return suggestions, length
@@ -36,18 +35,49 @@ func (bc *BellCompleter) Do(line []rune, pos int) ([][]rune, int) {
 
 		if len(suggestions) > 1 {
 			if !sameContext{
-				bc.prevLine = line
-				fmt.Print("\a")
-			}else{
-				fmt.Println()
-				for _, r := range suggestions{
-					fmt.Print(string(line) + string(r) + " ")
+				//completion using LCP - longest common prefix whenever user presses tab
+				LCP := ""
+				for i := 0; ; i++ {  
+					//check if ALL suggestions are long enough
+					for _, suggestion := range suggestions {
+						if i >= len(suggestion) {
+							goto done
+						}
+					}
+					
+					character := suggestions[0][i] //use first as reference
+					
+					//Check if ALL have the same character
+					allMatch := true
+					for _, suggestion := range suggestions {
+						if suggestion[i] != character {
+							allMatch = false
+							break
+						}
+					}
+					
+					if allMatch {
+						LCP += string(character)
+					} else {
+						fmt.Print("\a")
+						break  //found a difference, stop
+					}
 				}
-				fmt.Printf("\n$ %s", string(line))
-				return suggestions, length
+				done:
+				completeLine := []rune(LCP)
+				line = append(line,completeLine...)
+				bc.prevLine = line
+				return [][]rune{[]rune(LCP)}, length
+
+		}else{
+			fmt.Println()
+			for _, r := range suggestions{
+				fmt.Print(string(line) + string(r) + " ")
 			}
-			
-		}
+			fmt.Printf("\n$ %s", string(line))
+			return suggestions, length
+		}		
+	}
 	return nil, length
 }
 
@@ -98,7 +128,6 @@ func main() {
 		if err != nil {
 			break
 		}
-
 
 		//Clean spaces at the beginning and end; ex. echo hello world
 		cleanInput := strings.TrimSpace(line)
