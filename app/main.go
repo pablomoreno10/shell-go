@@ -129,9 +129,15 @@ func main() {
 			break
 		}
 
-		//Clean spaces at the beginning and end; ex. echo hello world
+		//clean spaces at the beginning and end -> ex. echo hello world
 		cleanInput := strings.TrimSpace(line)
 		
+		//check if input contains a pipe, if not it is ignored
+		if strings.Contains(cleanInput, "|") {
+			handlePipeline(cleanInput)
+			continue
+		}
+
 		if cleanInput == ""{
 			continue
 		}
@@ -422,4 +428,83 @@ func getAllExec() []string {
     }
 	slices.Sort(exec)
     return exec
+}
+
+//dual command pipeline implementation
+func handlePipeline(input string) {
+	for i, r := range input{
+		if r == '|'{
+			if i+1 >= len(input){
+				fmt.Printf("syntax error: expected command after |")
+			}
+
+			left := input[:i]
+			right := input[i+1:]
+			
+			//parse left command
+			leftParsed, err := parseInput(left)
+			if err != nil {
+				fmt.Println("Error parsing input:", err)
+				continue
+			}
+			if len(leftParsed) == 0 {
+				continue
+			}
+			leftCmd := leftParsed[0]
+			leftArgs := leftParsed[1:]
+
+			//parse right command
+			rightParsed, err := parseInput(right)
+			if err != nil {
+				fmt.Println("Error parsing input:", err)
+				continue
+			}
+			if len(rightParsed) == 0 {
+				continue
+			}
+			rightCmd := rightParsed[0]
+			dirtyRightArgs := rightParsed[1:]
+
+			//check if right side has output redirection (>, 2>)
+			rightArgs, outputFile, errorFile, err := parseRedirection(dirtyRightArgs)
+			if err != nil{
+				fmt.Println("Error:", err)
+				continue
+			}
+
+			//create pipe - connects left command's output to right command's input
+			pipeReader, pipeWriter, _ := os.Pipe()
+			
+			//set up left command - its output goes into the pipe
+			leftCommand := exec.Command(leftCmd, leftArgs...)
+			leftCommand.Stdout = pipeWriter  // output → pipe
+			leftCommand.Stderr = os.Stderr   // errors → terminal
+			
+			//set up right command - it reads from the pipe
+			rightCommand := exec.Command(rightCmd, rightArgs...)
+			rightCommand.Stdin = pipeReader  // input ← pipe
+
+			//right command output goes to file or terminal
+			if outputFile != nil {
+				rightCommand.Stdout = outputFile
+			} else {
+				rightCommand.Stdout = os.Stdout
+			}
+
+			if errorFile != nil {
+				rightCommand.Stderr = errorFile
+			} else {
+				rightCommand.Stderr = os.Stderr
+			}
+			
+			//start both commands (they run at the same time)
+			leftCommand.Start()
+			pipeWriter.Close()  //close our copy so pipe closes when left command finishes
+			rightCommand.Start()
+			
+			//Wait for both to finish
+			leftCommand.Wait()
+			rightCommand.Wait()
+		}
+	}
 }
