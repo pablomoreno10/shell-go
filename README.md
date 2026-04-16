@@ -1,34 +1,63 @@
-[![progress-banner](https://backend.codecrafters.io/progress/shell/256b45be-b51c-4e64-b1a0-e4fc3e1ee0a7)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Go-Shell
 
-This is a starting point for Go solutions to the
-["Build Your Own Shell" Challenge](https://app.codecrafters.io/courses/shell/overview).
+A POSIX-compliant shell implementation written in Go. This project covers the core internals of a command-line interface, from process management and terminal I/O to complex string parsing and stream redirection.
 
-In this challenge, you'll build your own POSIX compliant shell that's capable of
-interpreting shell commands, running external programs and builtin commands like
-cd, pwd, echo and more. Along the way, you'll learn about shell command parsing,
-REPLs, builtin commands, and more.
+---
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Features
 
-# Passing the first stage
+### Core Mechanics
+* **REPL & Prompt:** A standard Read-Eval-Print Loop that handles input and invalid command states.
+* **Built-in Commands:** Native implementation of `echo`, `exit`, `pwd`, `type`, and `cd`.
+* **Path Resolution:** Dynamically locates and executes external programs by searching the system `$PATH`.
+* **Directory Navigation:** Full support for `cd` using absolute paths, relative paths, and home (`~`) directory shortcuts.
 
-The entry point for your `shell` implementation is in `app/main.go`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+### Advanced Parsing
+* **Quoting & Escaping:** Robust handling of single quotes (`'`), double quotes (`"`), and backslashes (`\`) across different contexts.
+* **Quoted Executables:** Supports running programs located in paths that require quoting (e.g., paths with spaces).
 
+### I/O & Control Flow
+* **Redirection:** * Standard output and error redirection (`>`, `1>`, `2>`).
+    * Appending support for both stdout and stderr (`>>`, `2>>`).
+* **Pipelines:** Implementation of dual-command pipelines (`|`) for process chaining.
+
+### Command Completion
+* **Tab-Completion:** Intelligent completion for:
+    * Built-in commands and their arguments.
+    * Executables found in the system path.
+    * Partial matches and multiple match selection logic.
+
+---
+
+## Usage
+
+### Prerequisites
+* Go 1.25 or higher
+
+### Local Setup
+To run the shell directly:
 ```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+./your_program.sh
 ```
 
-Time to move on to the next stage!
+To build the binary:
+```sh
+go build -o goshell app/main.go
+./goshell
+```
 
-# Stage 2 & beyond
+---
 
-Note: This section is for stages 2 and beyond.
+## Roadmap
 
-1. Ensure you have `go (1.25)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.go`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+The primary architecture and POSIX-compliant features are complete. Future iterations will include:
+* **Persistence:** Saving and navigating command history across sessions.
+* **File Completion:** Expanding tab-completion to include local file paths and directories.
+
+---
+
+## Technical Learnings
+This project involved a deep dive into Unix system calls, managing file descriptors for redirections, and handling process synchronization for pipelines in Go. I intentionally minimized the use of AI during development to ensure a grounded, first-principles understanding of low-level systems programming while reading documentation. 
+
+### Acknowledgements
+Special thanks to **CodeCrafters** for the structured challenge and excellent test suite (while it was free) that made building this shell a rewarding experience.
